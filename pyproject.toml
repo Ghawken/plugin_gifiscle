@@ -87,11 +87,11 @@ dependencies = [ # Optional
 
 # what's used to render the link text on PyPI.
 [project.urls]  # Optional
-"Homepage" = "https://github.com/ghawken/homekitlink_ffmpeg"
-"Bug Reports" = "https://github.com/ghawken/homekitlink_ffmpeg"
+"Homepage" = "https://github.com/Ghawken/plugin_gifiscle"
+"Bug Reports" = "https://github.com/Ghawken/plugin_gifiscle"
 "Funding" = "https://donate.pypi.org"
-"Say Thanks!" = "https://github.com/ghawken/homekitlink_ffmpeg"
-"Source" = "https://github.com/ghawken/homekitlink_ffmpeg"
+"Say Thanks!" = "https://github.com/Ghawken/plugin_gifiscle"
+"Source" = "https://github.com/Ghawken/plugin_gifiscle"
 
 [build-system]
 # These are the assumed default build requirements from pip:
