@@ -32,7 +32,7 @@ binary_path = get_gifsicle_binary()
 print(binary_path)
 # and for good measure below will check can run the binary correctly
 # will need options etc. for proper usage
-subprocess.run([binary_path,"--help")
+subprocess.run([binary_path,"--help"])
 
 # You can now use the path to the binary in your application
 ```
