@@ -9,7 +9,7 @@ What is Gifsicle:
 https://github.com/kohler/gifsicle
 Basically it is a binary to create animated gifs with many options and typically producing a excellent, small file as a result
 
-The package consists of 2 1.94 gifscile binaries including newer --lossy options.
+The package consists of two 1.94 gifscile binaries including newer --lossy options.
 get_gifsicle_binary will return the path to the correct binary for either x86 OSX Mac or ARM MAC
 
 ## Installation

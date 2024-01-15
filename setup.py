@@ -3,7 +3,10 @@ import os
 from setuptools import setup
 from setuptools.command.install import install
 import subprocess
-
+import traceback
+from glob import glob
+from threading import Thread
+import time
 
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
@@ -16,41 +19,58 @@ def package_files(directory):
             paths.append(os.path.join('..', path, filename))
     return paths
 
+## Note
+## None of the below will run if a wheel is included in the distribution to pypi
+## After built with python3 -m build, delete the wheel from the dist directory
+## then twine upload dist/*
+## means takes a few seconds to build wheel when installed - also may mean dependencies to build wheel?
+## need setuptools
 class CustomInstall(install):
-    def run(self):
-        # Run the standard install process
-        install.run(self)
-        # Determine the installation path of the package
-        package_path = os.path.join(self.install_lib, 'plugin_gifsicle')
-
-        ## Hard code here as no way to access target.  Will need regular updates.
-        ## given -t is being used with pip, move must occur first and then pip libraries downloaded - so should correctly
-        ## remove quarantine bit from indigo plugin Bundles
-        indigo_plugins_path = '/Library/Application Support/Perceptive Automation/Indigo 2023.2/Plugins'
-        indigo_disabled_plugins_path = '/Library/Application Support/Perceptive Automation/Indigo 2023.2/Plugins (Disabled)'
-        # Log file path (you could also include a timestamp or other distinguishing info if needed)
-        log_file_path = os.path.join(package_path, 'post_install.log')
-        # Traverse up to get the bundle directory
-        # Construct the xattr command to run in the Indigo Plugins directory
-        # add recursive - seems like -d enough, but previous advice to run recursively - so add that here
-        command = f'xattr -rd com.apple.quarantine "{indigo_plugins_path}"'
-        command_disabled = f'xattr -rd com.apple.quarantine "{indigo_disabled_plugins_path}"'
-        # Open the log file for writing
+    def remove_quarantine(self, plugin_paths, log_file_path):
+        base_command = '/usr/bin/xattr -rd com.apple.quarantine'
+        delay_between_commands = 0.1  # Delay in seconds (adjust as needed)
         with open(log_file_path, 'a') as log_file:
-            # Write initial log entry
-            log_file.write(f"Running post-install script in {indigo_plugins_path}\n")
-            log_file.write(f"Running command: {command}\n{command_disabled}\n")
-            # Execute the command, passing the string directly to the shell
-            try:
-                subprocess.check_call(command, shell=True, stderr=log_file, stdout=log_file)
-                log_file.write(f"Successfully removed quarantine attribute from all files in {indigo_plugins_path}\n")
-                subprocess.check_call(command_disabled, shell=True, stderr=log_file, stdout=log_file)
-                log_file.write(f"Successfully removed quarantine attribute from all files in {indigo_disabled_plugins_path}\n")
-            except subprocess.CalledProcessError as e:
-                log_file.write(f"Failed to remove quarantine attribute: {e}\n")
-            except FileNotFoundError:
-                log_file.write("xattr command not found, ensure it is available and in the PATH\n")
+            for plugin_path in plugin_paths:
+                command = f"{base_command} '{plugin_path}'"
+                log_file.write(f"Trying the following: {command}\n")
+                result = subprocess.run(
+                    command,
+                    shell=True,
+                    capture_output=True,
+                    text=True
+                )
+                if result.returncode == 0:
+                    log_file.write(f"Successfully removed quarantine attribute from {plugin_path}\n")
+                    log_file.write(result.stdout)
+                else:
+                    log_file.write(f"Failed to remove quarantine attribute from {plugin_path}:\n")
+                    log_file.write(result.stderr)
+                    log_file.write(result.stdout)
+                if result.stdout or result.stderr:
+                    log_file.write(result.stdout)
+                    log_file.write(result.stderr)
 
+                time.sleep(delay_between_commands)
+
+    def run(self):
+        try:
+        # Run the standard install process
+            install.run(self)
+            indigo_plugins_path = '/Library/Application Support/Perceptive Automation/Indigo 2023.2/Plugins'
+            indigo_disabled_plugins_path = '/Library/Application Support/Perceptive Automation/Indigo 2023.2/Plugins (Disabled)'
+            log_file_path = os.path.join(self.install_lib, 'plugin_gifsicle', 'post_install.log')
+            plugin_paths = glob(os.path.join(indigo_plugins_path, '*.indigoPlugin'))
+            plugin_paths += glob(os.path.join(indigo_disabled_plugins_path, '*.indigoPlugin'))
+            # Construct the base xattr command to remove the quarantine attribute
+            base_command = '/usr/bin/xattr -rd com.apple.quarantine'
+            quarantine_thread = Thread(target=self.remove_quarantine, args=(plugin_paths, log_file_path))
+            quarantine_thread.start()
+            quarantine_thread.join()  # Optionally wait for the thread to finish
+
+        except Exception as e:
+            print("An unexpected error occurred: ", e)
+            print(traceback.format_exc())
+            raise  # Re-raise the exception to ensure it's not silently ignored
 
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
